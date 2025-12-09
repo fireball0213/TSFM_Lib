@@ -56,7 +56,7 @@ conda activate myenv
 # 安装核心依赖
 pip install -r requirements_core.txt
 
-# 手动安装可能存在依赖冲突的包版本，可忽略冲突警告
+# 【重要！】核心依赖安装完成后，再手动安装下面两个可能存在依赖冲突的包版本，可忽略冲突警告
 pip install gluonts==0.15.1
 pip install transformers==4.40.1
 ```
