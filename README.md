@@ -63,7 +63,7 @@ pip install transformers==4.40.1
 
 
 
-### 2.一键配置项目路径（.env）
+### 2. 一键配置项目路径（.env）
 
 本项目通过根目录下的 `.env` 文件来获取项目根路径。
  **数据和模型都放在项目根路径下的子目录（`Dataset_Path/` 与 `Model_Path/`）**，因此只需要设置项目绝对路径：
@@ -94,9 +94,9 @@ echo Project_Path=%cd%> .env
 
 
 
-### 3.准备数据与预训练模型（离线方式）
+### 3. 准备数据与预训练模型（离线方式）
 
-本作业统一采用 **本地离线** 的方式加载数据与模型，运行时 **不会** 再从 HuggingFace 等网站自动下载，请提前从https://box.nju.edu.cn/d/275f6b45548c4763a72f/中下载下述文件：
+本作业统一采用 **本地离线** 的方式加载数据与模型，运行时 **不会** 再从 HuggingFace 等网站自动下载，请提前从https://box.nju.edu.cn/d/275f6b45548c4763a72f/ 中下载下述文件：
 
 - `Dataset.zip`：包含 GIFT-Eval 所需的所有数据集（ett1、ett2、m4、solar 等），下载后将其内容解压到`TSFM-Lib/Dataset_Path`中
 - `Model.zip`：包含预先下载好的 TSFM 预训练模型（Chronos、Moirai、TimesFM、Sundial 等），下载后将其内容解压到`TSFM-Lib/Model_Path`中
@@ -121,7 +121,7 @@ TSFM-Lib/
       └── timesfm-models/timesfm-2.5-200m-pytorch/
 ```
 
-### 4.运行现有 TSFM 模型，验证环境
+### 4. 运行现有 TSFM 模型，验证环境
 
 ##### 4.1 Linux
 
@@ -164,9 +164,9 @@ python run_model_zoo.py --models "all_zoo" --size_mode "first_size" --batch_size
 
 
 
-## 5.使用 `check_TSFM.py` 检查运行结果
+## 5. 使用 `check_TSFM.py` 检查运行结果
 
-本次作业选取了50个运行速度较快的数据集configurations，数据集的具体细节详见 GIFT-Eval 论文（https://arxiv.org/pdf/2410.10393）中的附录 E。
+本次作业选取了50个运行速度较快的数据集configurations，数据集的具体细节详见 GIFT-Eval 论文（https://arxiv.org/pdf/2410.10393 ）中的附录 E。
 
 现有模型运行完成后，可以使用 `check_TSFM.py` 对结果进行汇总和检查。
 
@@ -195,9 +195,7 @@ python check_TSFM.py
 
 下面给出推荐步骤与注意事项。
 
-Model zoo中已经包含了4个示例文件，
-
-### 6.1 选择模型并收集信息
+### 6. 选择模型并收集信息
 
 1. 打开 GIFT-Eval 排行榜，在 overall 榜单下全选所有模型：
 
@@ -215,7 +213,7 @@ Model zoo中已经包含了4个示例文件，
 
    - HuggingFace 模型仓库链接；
    - 官方 GitHub 代码链接；
-   - 论文标题、会议/期刊（方便后续引用）；
+   - 论文标题、会议/期刊；
    - 是否支持多变量预测（multivariate）；
    - 输入/输出格式定义（`context_len`、`prediction_length`、特征维度等）；
    - 是否提供不同 size（如 small / base / large）
@@ -224,7 +222,7 @@ Model zoo中已经包含了4个示例文件，
 
 ------
 
-### 6.2 在原始仓库中跑通官方示例代码
+### 7. 在原始仓库中跑通官方示例代码
 
 在将模型移植到本框架之前，**务必先在官方代码环境中跑通一次示例**，理解基本调用方式。建议独立创建一个临时目录或 conda 环境，用于测试原始代码，避免破坏本作业环境。
 
@@ -239,32 +237,12 @@ Model zoo中已经包含了4个示例文件，
    - `from_pretrained("xxx/yyy")`
    - `force_download=True`
    - `revision="main"` 等参数
-     在本作业中，我们强调 **本地离线** 调用，需要确保模型可以从本地目录加载，而不是运行时联网下载，如果官方示例代码默认在线调用，且未显示保留支持本地调用的接口，则可能需要在官方源代码中寻找上述参数进行手动修改
-
-------
-
-### 6.3 HuggingFace 模型的两种调用方式（推荐本地离线）
-
-在代码层面，HuggingFace 模型通常有两种调用方式，本框架强烈推荐使用 **本地离线方式**，即模型文件预先下载到 `Model_Path/` 中再加载。
-
-1. **在线调用（不推荐用于本次作业）**
-
-   - 典型写法如下：
-
-     ```
-     model = SomeTSFM.from_pretrained("org/model-name")
-     ```
-
-   - 这种调用方式依赖网络，首次执行时会自动下载权重到本地缓存，速度较慢且不稳定，因此本次作业不推荐。
-
-2. **离线本地调用（推荐）**
-
-   - 预先在任意有网络的机器上，从 HuggingFace 下载模型文件（或使用 `git lfs clone`），然后拷贝到课程项目的 `Model_Path/` 目录下；
+   - 在本作业中，我们强调 **本地离线** 调用，即模型文件预先下载到 `Model_Path/` 中再加载，而不是运行时联网下载(速度较慢且不稳定)，如果官方示例代码默认在线调用，且未显示保留支持本地调用的接口，则可能需要在官方源代码中寻找上述参数进行手动修改
    - 本框架中，会在 `Model_Path/model_zoo_config.py` 中为每个模型记录 `model_local_path`，统一管理，自动加载
 
 ------
 
-### 6.4 将模型整合进框架代码：关键步骤与注意事项
+### 8. 将模型整合进框架代码：关键步骤与注意事项
 
 整合过程大致分为三步：
 
@@ -332,7 +310,7 @@ Model_Path/
 
 ------
 
-### 6.5 结果检查与评估
+### 9. 结果检查与评估
 
 在完成新模型集成后，请至少进行如下检查：
 
