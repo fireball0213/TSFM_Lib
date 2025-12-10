@@ -36,6 +36,8 @@ TSFM 的核心特点是：在大规模多源时序数据上进行预训练，具
 
 
 
+
+
 ## 任务一： 代码部署与测试(10 pts)
 
 > 任务一中，主要进行环境准备和部署测试，你并不需要修改任何代码。
@@ -121,6 +123,8 @@ TSFM-Lib/
       └── timesfm-models/timesfm-2.5-200m-pytorch/
 ```
 
+
+
 ### 4. 运行现有 TSFM 模型，验证环境
 
 ##### 4.1 Linux
@@ -189,6 +193,8 @@ python check_TSFM.py
 - 检查缺失或异常文件；
 - 汇总各模型在不同数据集上的性能指标，打印对比表格。
 
+---
+
 
 
 ## 任务二：复现两个新的TSFM (50 pts)
@@ -229,7 +235,7 @@ python check_TSFM.py
 
 4. 对每个新模型，建议选择 **发布时间最新、参数量最小的版本**，选择一个版本即可
 
-------
+
 
 ### 2. 在原始仓库中跑通官方示例代码
 
@@ -249,7 +255,7 @@ python check_TSFM.py
    - 在本作业中，我们强调 **本地离线** 调用，即模型文件预先下载到 `Model_Path/` 中再加载，而不是运行时联网下载(速度较慢且不稳定)，如果官方示例代码默认在线调用，且未显示保留支持本地调用的接口，则可能需要在官方源代码中寻找上述参数进行手动修改
    - 本框架中，会在 `Model_Path/model_zoo_config.py` 中为每个模型记录 `model_local_path`，统一管理，自动加载
 
-------
+
 
 ### 3. 将模型整合进框架代码：关键步骤与注意事项
 
@@ -317,7 +323,7 @@ Model_Path/
    - 所有模型预测最终都需要产生统一结构的 `GluonTS Forecast` 对象输出，用来支持统一的评估流程，具体格式和实现方式参考示例文件
    - 需要根据模型是否具备多分位的输出能力，决定是将输出转换为`QuantileForecast` 还是 `SampleForecast`
 
-------
+
 
 ### 4. 结果检查与评估
 
@@ -334,7 +340,8 @@ Model_Path/
    - 运行`python check_TSFM.py`，检查新模型在不同长度下的 sMAPE、MASE、Rank 等指标是否有合理变化，总结你发现的规律：
    - 如果结果过于夸张（如 sMAPE=10^5、MASE 为负数或极大值）通常说明维度对齐存在问题，请优先检查对数据集多个channels (variates)、series、windows的对齐方式；
 
-   
+
+---
 
 
 
@@ -360,6 +367,8 @@ Model_Path/
 在本框架中，`Real_Select` 提供了“理想上限”（oracle），即在真实性能上挑选最优模型；  
 而你需要设计一个 **可实现的 selector**，尽量逼近这个上限。
 
+
+
 ### 2. 需要修改/新增的文件
 
 本任务相关的核心文件包括：
@@ -374,6 +383,8 @@ Model_Path/
   你需要在标记 TODO 的位置，添加新方法的结果命名与汇总逻辑，便于统一对比。
 - （可选）`base_model.py`  
   如你的 selector 需要新增参数，需要在 `get_save_path` 的 TODO 位置，修改结果文件保存逻辑，把这些参数编码进文件名，方便区分不同设置下的结果。
+
+
 
 ### 3. 设计你的 selector 方法
 
@@ -400,6 +411,8 @@ Model_Path/
 - 如何处理多变量的时间序列
 - 有哪些主要参数，参数的主要影响
 - 你对该方法优势和劣势的分析与思考
+
+
 
 ### 4. 基线 selector 方法与参考
 
@@ -446,6 +459,8 @@ python run_model_zoo.py \
   --real_order_metric "MASE"
 ```
 
+
+
 ### 5. `model_order` 与禁止使用的信息
 
 框架中，`model_order` 以自然数形式存储模型排序，而“模型编号”的定义是：
@@ -468,7 +483,9 @@ python run_model_zoo.py \
 - **不要**通过在不同 selector 间调整 `ensemble_size` 来“刷分”。对比时请保证 `ensemble_size` 一致；
 - 如需为你的 selector 增加额外参数（例如不同的 task 表征方式），可以在 `base_model.py` 的 `get_save_path` 的 TODO 处修改结果文件命名逻辑，让不同参数设置的结果可以被区分和保存。
 
-### 10.6 调用你的 selector 方法
+
+
+### 6 调用你的 selector 方法
 
 在 `selector/my_fancy_select.py` 和 `selector/select_config.py` 完成实现后，你可以类似地调用自己的方法，例如（假设方法名为 `My_Fancy_Select`）：
 
@@ -481,7 +498,9 @@ python run_model_zoo.py \
 
 若你的方法需要额外参数（例如 `--selector_feature_mode xxx`），请在 `select_config.py` 中完成注册，并在 README 或报告中说明这些参数的含义与默认值。
 
-### 10.7 评估与结果分析（包括 bonus 规则）
+
+
+### 7 评估与结果分析（包括 bonus 规则）
 
 1. **运行评估脚本**
 
@@ -536,6 +555,8 @@ python run_model_zoo.py \
    ```
 
    在这个模式下，`check_selector.py` 会模拟一个随着时间不断加入新 TSFM 的环境，观察你的方法在“旧模型 + 新模型混合”的情况下，是否仍能保持稳定甚至领先的性能。
+
+---
 
 
 
