@@ -149,8 +149,8 @@ class All_Select_Model(Baseline_Select_Model):
     """全部集成模型"""
 
     def _get_select_strategy(self, dataset):
-        def select_strategy():
-            model_order = list(range(self.args.current_zoo_num - 1, -1, -1))
+        def select_strategy(dataset_name=None):
+            model_order = list(range(self.args.current_zoo_num - 1, -1, -1)) #默认为Recent模式
             ensemble_size = self.args.current_zoo_num  # 全部模型都参与集成
             return model_order, ensemble_size
 

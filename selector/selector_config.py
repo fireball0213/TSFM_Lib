@@ -45,7 +45,7 @@ Selector_zoo_details = {
         ),
     },
 
-    # ✅ 后续如果再加新的 selector，只需要在这里新增一个条目即可：
+    # TODO：新增的 selector
     # "MyFancy_Select": {
     #     "model_module": "selector.my_fancy_select",
     #     "model_class": "MyFancySelectModel",

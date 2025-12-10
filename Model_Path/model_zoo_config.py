@@ -52,6 +52,11 @@ Model_zoo_details 填写说明：
                 - "Model_Path/sundial-models/Sundial-base_128m"
                 - "Model_Path/chronos-models/chronos-bolt-tiny"
 
+    * "release_date"：
+        - 含义：模型的发布日期。
+        - 从何处获得：
+            - HuggingFace官方模型的 Files and versions 页面
+
 '''
 
 
@@ -151,5 +156,5 @@ All_model_names = [
 
 MULTIVAR_TSFM_PREFIXES = [
     "moirai",
-    # 如果后续有新的多变量 TSFM，请在此追加模型族的 family 名（对应Model_zoo_details的最外层 key）
+    # TODO：如果后续有新的多变量 TSFM，请在此追加模型族的 family 名（对应Model_zoo_details的最外层 key）
 ]

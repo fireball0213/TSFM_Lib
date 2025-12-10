@@ -25,9 +25,9 @@ TSFM 的核心特点是：在大规模多源时序数据上进行预训练，具
 2. 检查新 TSFM 的结果和性能，确保指标范围合理，复现成功；
 3. 统一运行 model zoo 中所有模型，比较它们在不同 `context_len` 下的性能变化。
 
-**任务三：复现新的 selector 方法（40 pts，README 待补充）**
+**任务三：复现新的 selector 方法（40 pts） + （bonus 40 pts）**
 
-实现一个新的 selector 方法，对不同的下游预测任务推荐不同的模型进行预测，并与基线 selector 进行性能对比。该部分的具体要求和接口说明将在后续补充。
+实现一个新的 selector 方法，对不同的下游预测任务推荐不同的模型进行预测，并与基线 selector 进行性能对比，如果在全部数据集上的avg_Rank能够超越基线，可以获得bonus分数。
 
 > ⚠️ 本作业 **推荐采用本地离线方式**：  
 > 所有数据和模型文件从 HuggingFace 或其他来源预先下载到本地，运行时 **不再从网络在线拉取**，框架直接从 `Dataset_Path/` 和 `Model_Path/` 目录加载。
@@ -131,12 +131,14 @@ conda activate myenv
 
 # 单个模型运行：使用 GPU 0 运行 Chronos bolt_tiny，context_len 采用默认设置
 CUDA_VISIBLE_DEVICES=0 python run_model_zoo.py \
+  --run_mode "zoo" \
   --models "chronos" \
   --size_mode "bolt_tiny" \
   --batch_size 128
 
 # 一键全部运行：使用 GPU 0 运行全部模型的首个 size，context_len 固定为 512
 CUDA_VISIBLE_DEVICES=0 python run_model_zoo.py \
+  --run_mode "zoo" \
   --models "all_zoo" \
   --size_mode "first_size" \
   --batch_size 128 \
@@ -152,15 +154,22 @@ conda activate myenv
 
 :: 使用 GPU 0 运行 Chronos bolt_tiny，context_len 采用默认设置
 set CUDA_VISIBLE_DEVICES=0
-python run_model_zoo.py --models "chronos" --size_mode "bolt_tiny" --batch_size 128
+python run_model_zoo.py --run_mode "zoo" --models "chronos" --size_mode "bolt_tiny" --batch_size 128
 
 :: 使用 GPU 0 运行全部模型的首个 size，context_len 固定为 512
 set CUDA_VISIBLE_DEVICES=0
-python run_model_zoo.py --models "all_zoo" --size_mode "first_size" --batch_size 128 --fix_context_len --context_len 512
+python run_model_zoo.py --run_mode "zoo" --models "all_zoo" --size_mode "first_size" --batch_size 128 --fix_context_len --context_len 512
 
 ```
 
 运行成功后，各模型的结果会自动写入 `results/` 目录（按模型名、context_len 等分子目录存放）。
+
+为了方便调试，框架代码还支持以下可选参数（全部作业任务都支持）
+
+```
+--debug_mode #打印更多过程输出
+--skip_saved #运行时跳过已保存结果的数据集
+```
 
 
 
@@ -184,7 +193,7 @@ python check_TSFM.py
 
 ## 任务二：复现两个新的TSFM (50 pts)
 
-> 任务二中，你需要修改 `Model_Path/model_zoo_config.py` / `model_zoo/New_TSFM_1_model.py` / `model_zoo/New_TSFM_2_model.py` 这三个文件
+> 任务二中，你需要修改 `Model_Path/model_zoo_config.py` / `model_zoo/New_TSFM_1_model.py` / `model_zoo/New_TSFM_2_model.py` 这三个文件，在评估阶段，你需要修改`check_TSFM.py`来遍历更多参数
 
 本任务是本次作业的核心部分，要求同学 **从 GIFT-Eval 排行榜中选择两个新的 TSFM 模型，并完整复现到当前框架中**，包括：
 
@@ -195,7 +204,7 @@ python check_TSFM.py
 
 下面给出推荐步骤与注意事项。
 
-### 6. 选择模型并收集信息
+### 1. 选择模型并收集信息
 
 1. 打开 GIFT-Eval 排行榜，在 overall 榜单下全选所有模型：
 
@@ -222,7 +231,7 @@ python check_TSFM.py
 
 ------
 
-### 7. 在原始仓库中跑通官方示例代码
+### 2. 在原始仓库中跑通官方示例代码
 
 在将模型移植到本框架之前，**务必先在官方代码环境中跑通一次示例**，理解基本调用方式。建议独立创建一个临时目录或 conda 环境，用于测试原始代码，避免破坏本作业环境。
 
@@ -242,7 +251,7 @@ python check_TSFM.py
 
 ------
 
-### 8. 将模型整合进框架代码：关键步骤与注意事项
+### 3. 将模型整合进框架代码：关键步骤与注意事项
 
 整合过程大致分为三步：
 
@@ -310,9 +319,9 @@ Model_Path/
 
 ------
 
-### 9. 结果检查与评估
+### 4. 结果检查与评估
 
-在完成新模型集成后，请至少进行如下检查：
+在完成新模型后，请至少进行如下检查：
 
 1. **基础跑通检查**
 
@@ -329,9 +338,204 @@ Model_Path/
 
 
 
-## 任务三：复现一个新的模型选择方法 (40 pts)
+## 任务三：复现一个新的模型选择方法 (40 pts + bonus 40 pts)
 
+> 任务三中，你需要在 `selector/my_fancy_select.py`中实现一个新的模型选择方法 ，并修改 `selector/select_config.py`使其与框架代码兼容 ，在评估阶段，你需要修改`check_selector.py`来添加你新实现的模型选择方法的结果汇总部分
+>
 
+> 任务三中，你需要在 `selector/my_fancy_select.py` 中实现一个新的模型选择方法，并在 `selector/select_config.py` 中完成配置，使其与现有框架兼容；在评估阶段，你需要修改 `check_selector.py`，将你的方法纳入统一的结果汇总与对比。
+
+### 1. 背景与目标
+
+在任务一和任务二中，你已经会：
+
+- 在统一框架下运行多个 TSFM；
+- 比较不同模型在不同数据集、不同 `context_len` 下的性能。
+
+实际应用中，**不同 TSFM 的能力差异很大**，没有任何单个模型能在所有数据集上同时最优；  
+如果在每个新任务上都暴力遍历全部模型，计算开销非常大，且不现实。
+
+因此我们需要一种 **模型选择（selector）方法**：  
+在不遍历所有模型的前提下，尽可能为每个下游任务匹配一个“接近最佳”的 TSFM。  
+在本框架中，`Real_Select` 提供了“理想上限”（oracle），即在真实性能上挑选最优模型；  
+而你需要设计一个 **可实现的 selector**，尽量逼近这个上限。
+
+### 2. 需要修改/新增的文件
+
+本任务相关的核心文件包括：
+
+- `selector/baseline_select.py`  
+  已实现 4 个基线 selector 方法，供你参考它们的调用方式与接口形式。
+- `selector/my_fancy_select.py`  
+  你需要在这里实现自己设计的 selector 方法。
+- `selector/select_config.py`  
+  你需要在这里为新方法补充配置，使其可以通过命令行参数调用。
+- `check_selector.py`  
+  你需要在标记 TODO 的位置，添加新方法的结果命名与汇总逻辑，便于统一对比。
+- （可选）`base_model.py`  
+  如你的 selector 需要新增参数，需要在 `get_save_path` 的 TODO 位置，修改结果文件保存逻辑，把这些参数编码进文件名，方便区分不同设置下的结果。
+
+### 3. 设计你的 selector 方法
+
+你需要任选一个 **基于特征学习 / 元学习 / 迁移学习 / 表征学习 / 其他先进机器学习思想** 的模型选择方法，将其“为任务选模型”的**核心策略**嵌入到 `selector/my_fancy_select.py` 中。
+
+一些建议方向（仅供灵感参考）：
+
+- 利用数据统计特征（如趋势、季节性、波动性、ACF/PACF 等）构建 task embedding，然后匹配最适合该 task embedding 的模型；
+- 基于预训练 TSFM 的中间表示，做一次“任务-模型相似度”的匹配；
+- 类似 few-shot learning / meta-learning，根据少量验证窗口的性能来快速估计各模型在该任务上的排名；
+- 借鉴图像、文本等领域已有的模型选择方法，只要你能合理迁移到时序任务即可。
+
+> **注意（多变量时序的特殊性）：**  
+> 时序任务中往往是多通道（multivariate），你需要思考：
+> - 是把所有通道拼在一起构造一个整体的 task 表征；
+> - 还是先对每个通道单独选择模型，再想办法汇总成一个最终模型顺序；
+> - 或者设计其他更合理的融合策略。
+
+最终，你的方法需要在每个下游任务上给出一个 **`model_order`**。后续预测流程（根据 `model_order` 和 `ensemble_size` 选择模型、执行推理）由框架自动完成。
+
+对你的模型选择方法，至少记录以下信息，后续在报告中使用：
+
+- 方法的来源，如论文（论文标题、会议/期刊）、代码库（如官方 GitHub 代码链接），或其他来源
+- 如何处理多变量的时间序列
+- 有哪些主要参数，参数的主要影响
+- 你对该方法优势和劣势的分析与思考
+
+### 4. 基线 selector 方法与参考
+
+在 `selector/baseline_select.py` 中提供了 4 个基线方法，全部继承自 `Baseline_Select_Model`，主要包括：
+
+- `All_Select`：使用全体模型进行集成；
+- `Recent_Select`：偏向选择最近发布的模型；
+- `Random_Select`：随机选择模型（可指定 `--seed`）；
+- `Real_Select`：利用真实评估结果得到“真实模型顺序”（oracle），作为模型选择方法的**理论上限**，不能在你自己的方法中直接使用。
+
+这些基线方法：
+
+- 统一继承自 `Baseline_Select_Model`；
+- 内部都包含计算 `model_order` 的核心逻辑；
+- 封装了大量辅助函数，用于基于model_order，读取保存好的TSFM的预测结果，并逐通道地组合他们，完成selector最后的预测环节。你无需修改这些环节，只需专注于“如何为每个任务计算模型排序”。
+
+基线方法的调用示例（Linux）：
+
+```bash
+# All_Select
+python run_model_zoo.py \
+  --run_mode "select" \
+  --models All_Select \
+  --fix_context_len
+
+# Recent_Select
+python run_model_zoo.py \
+  --run_mode "select" \
+  --models Recent_Select \
+  --fix_context_len
+
+# Random_Select（注意需要设置 seed）
+python run_model_zoo.py \
+  --run_mode "select" \
+  --models Random_Select \
+  --seed 1 \
+  --fix_context_len
+
+# Real_Select（使用真实顺序，作为 oracle 上限）
+python run_model_zoo.py \
+  --run_mode "select" \
+  --models Real_Select \
+  --fix_context_len \
+  --real_order_metric "MASE"
+```
+
+### 5. `model_order` 与禁止使用的信息
+
+框架中，`model_order` 以自然数形式存储模型排序，而“模型编号”的定义是：
+
+- 根据你在 `Model_Path/model_zoo_config.py` 中维护的 `release_date` 属性，对所有 TSFM 按“旧 → 新”的顺序自动编号；
+- 这个编号只是一个**固定排列**，方便统一管理。
+
+在实现自己的 selector 时：
+
+- ✅ 你 **可以**：
+  - 利用各个 TSFM 在一部分训练/验证窗口上的性能，估计在该任务上的优劣，并据此生成 `model_order`；
+  - 利用任务特征、模型特征等任何**不泄露测试集真实表现**的信息；
+- ❌ 你 **不可以** 使用的“作弊信息”包括（但不限于）：
+  - TSFM 的 `release_date` 本身作为“优劣特征”；
+  - `Real_Select` 或 `Real_Select_Model` 中预先计算好的、在**测试集**上得到的真实 `model_order`；
+  - 任何直接基于完整测试集性能的排序结果。
+
+此外：
+
+- **不要**通过在不同 selector 间调整 `ensemble_size` 来“刷分”。对比时请保证 `ensemble_size` 一致；
+- 如需为你的 selector 增加额外参数（例如不同的 task 表征方式），可以在 `base_model.py` 的 `get_save_path` 的 TODO 处修改结果文件命名逻辑，让不同参数设置的结果可以被区分和保存。
+
+### 10.6 调用你的 selector 方法
+
+在 `selector/my_fancy_select.py` 和 `selector/select_config.py` 完成实现后，你可以类似地调用自己的方法，例如（假设方法名为 `My_Fancy_Select`）：
+
+```
+python run_model_zoo.py \
+  --run_mode "select" \
+  --models My_Fancy_Select \
+  --fix_context_len
+```
+
+若你的方法需要额外参数（例如 `--selector_feature_mode xxx`），请在 `select_config.py` 中完成注册，并在 README 或报告中说明这些参数的含义与默认值。
+
+### 10.7 评估与结果分析（包括 bonus 规则）
+
+1. **运行评估脚本**
+
+   在你完成所有 selector 的运行（包括基线和你的新方法，固定 `ensemble_size=1`, `context_len=512`）后，执行：
+
+   ```
+   python check_selector.py
+   ```
+
+   并在文件中标记为 TODO 的位置，添加你新方法的结果命名逻辑，使其出现在汇总表中。
+
+2. **评估指标**
+
+   `check_selector.py` 会自动对比所有 selector 的表现，指标包括两大类：
+
+   - **预测性能指标**（越小越好）：
+     - `Rank`：模型预测性能的综合排名；
+     - `MASE`、`sMAPE`：与任务二中一致的误差指标。
+   - **模型选择质量指标**（越大越好，上限为1）：
+     - `Spearman`、`KendallTau`：你的 `model_order` 与真实模型顺序之间的秩相关；
+     - `Acc_TopK1`、`Acc_TopK3`：Top-K 预测命中率；
+     - `Real1_in_PredK1/3`、`Pred1_in_RealK1/3`：真实最优模型与预测排序的匹配情况。
+
+   典型输出会类似如下（仅示意）：
+
+   ```
+                       Random_s1_z4-4    Real-MASE_z4-4    Recent_z4-4    All_z4-4
+   Rank                        1.880             1.000          1.880       2.020
+   MASE                        1.912             1.704          1.912       2.004
+   sMAPE                       0.360             0.349          0.360       0.353
+   Spearman                    0.144             1.000          0.440         nan
+   KendallTau                  0.100             1.000          0.367         nan
+   Acc_TopK1                   0.480             1.000          0.480         nan
+   Real1_in_PredK1             0.480             1.000          0.480         nan
+   Pred1_in_RealK1             0.480             1.000          0.480         nan
+   Acc_TopK3                   0.740             1.000          0.873         nan
+   Real1_in_PredK3             0.700             1.000          0.980         nan
+   Pred1_in_RealK3             0.920             1.000          0.920         nan
+   ```
+
+3. **bonus 规则**
+
+   - 若你的 selector 的 **Rank（预测性能）优于最好的 baseline TSFM**（即单模型 baseline 中的最优者），可额外获得 **+20 bonus**；
+   - 若你的 selector 同时在 Rank 上 **超过：最优 baseline TSFM、`Recent_Select` 和 `All_Select`** 三者，则可额外获得 **+40 bonus**（不叠加，取其高者）。
+
+4. **真实场景扩展（可选）**
+
+   如果你对自己的 selector 方法有信心，可以进一步测试其在“模型库不断扩张”的动态场景下的表现：
+
+   ```
+   python check_selector.py --real_world_mode
+   ```
+
+   在这个模式下，`check_selector.py` 会模拟一个随着时间不断加入新 TSFM 的环境，观察你的方法在“旧模型 + 新模型混合”的情况下，是否仍能保持稳定甚至领先的性能。
 
 
 

@@ -80,12 +80,12 @@ def main():
 
     # model zoo selector
     parser.add_argument('--select_mode', type=str, default='Recent', help='选择模型的方式')
-    parser.add_argument('--random_times', type=int, default=10, help='随机集成次数')
-    parser.add_argument('--ensemble_size', type=int, default=0, help='集成的TopK模型数量')
+    parser.add_argument('--random_times', type=int, default=10, help='随机次数')
+    parser.add_argument('--ensemble_size', type=int, default=1, help='集成的TopK模型数量')
 
     # model zoo 增量版
     parser.add_argument('--real_world_mode', action='store_true', default=False, help='是否使用增量模型库运行,Fasle时使用单一select_date')
-    parser.add_argument('--select_date', type=str, help='选择截止使用的模型发布日期，模拟真实的模型发布状态，年月日格式', default='2025-08-01')
+    parser.add_argument('--select_date', type=str, help='选择截止使用的模型发布日期，模拟真实的模型发布状态，年月日格式', default='2025-12-01')
     parser.add_argument('--current_zoo_num', type=int, default=0, help='当前模型总数量')
     parser.add_argument('--real_order_metric', type=str, default='sMAPE', help='用于计算真实order的评估指标，options: [sMAPE, MASE]')
 
@@ -176,15 +176,15 @@ def main():
             all_zoo_release_list = [model["release_date"] for model in sorted_models]
 
             assert args.ensemble_size + 1 <= len(all_zoo_release_list), "ensemble_size must < current_zoo_num)"
-            # for current_zoo_num in range(args.ensemble_size+1,len(all_zoo_release_list)+1):
-            for current_zoo_num in range(len(all_zoo_release_list), len(all_zoo_release_list) + 1):
+            for current_zoo_num in range(args.ensemble_size+1,len(all_zoo_release_list)+1):
+            # for current_zoo_num in range(len(all_zoo_release_list), len(all_zoo_release_list) + 1):
                 current_zoo_release_list = all_zoo_release_list[args.ensemble_size:current_zoo_num]
                 args.select_date = current_zoo_release_list[-1]
                 print(f"\n🚀 🚀 🚀 Real_world增量模型库模式，{args.select_date}之前模型数量: "
                       f"{current_zoo_num} / {len(all_zoo_release_list)}, ensemble_size={args.ensemble_size}")
                 run_select(args)
         else:
-            # 指定日期的固定模型库模式，如args.select_date = '2025-08-01'
+            # 指定日期的固定模型库模式，如args.select_date = '2025-12-01'
             run_select(args)
 
     else:

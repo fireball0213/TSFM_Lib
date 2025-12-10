@@ -7,6 +7,29 @@ from scipy.stats import spearmanr, kendalltau
 from Dataset_Path.dataset_config import ALL_Fast_DATASETS
 from Model_Path.model_zoo_config import Model_abbrev_map, Model_zoo_details
 
+
+def check_results_file(csv_file_path,verbose=False):
+    """检查结果文件的完整性和一致性"""
+    try:
+        df = pd.read_csv(csv_file_path)
+    except Exception as e:
+        print(f"无法读取CSV文件: {e}")
+        return None
+
+    if verbose:
+        print(f"\n{'=' * 50}\n检查结果文件: {csv_file_path}")
+
+    # 1. 数据集完整性
+    check_dataset_completeness(df, verbose)
+    # 2. 去重
+    df = check_duplicate_results(df, csv_file_path, verbose)
+    # 3. 模型命名检查
+    check_model_naming(df, verbose)
+    # 4. 打印全局指标（只读）
+    analyze_model_results(df, verbose)
+
+    return df
+
 def check_dataset_completeness(df,verbose):
     """检查是否包含所有数据集结果"""
     done_datasets = set(df["dataset"].unique())
@@ -177,24 +200,6 @@ def check_model_naming(df,verbose):
             print(f"  - {dataset}: {names}")
 
 
-def format_rank_summary_all(rank_summary_all_raw, dataset_counts_by_group):
-    """
-    对最终 rank_summary_all 做格式化：
-    1. 可以在外层处理列名缩写
-    2. 行名加上本组数据集数量，例如 'Global (97)'
-    """
-    formatted = {}
-    for rank_type, df in rank_summary_all_raw.items():
-        df_fmt = df.copy()
-
-        # 添加数据集数量到行名
-        new_index = []
-        for idx in df.index:
-            count = dataset_counts_by_group.get(idx, "?")
-            new_index.append(f"{idx} ({count})")
-        df_fmt.index = new_index
-        formatted[rank_type] = df_fmt
-    return formatted
 
 def standardize_model_names(baseline_data, model_col: str = "model") -> pd.DataFrame:
     """
@@ -206,7 +211,7 @@ def standardize_model_names(baseline_data, model_col: str = "model") -> pd.DataF
     def _normalize(name: str) -> str:
         parts = name.split("_", 1)
         if len(parts) == 2:
-            return f"{parts[0]}-{parts[1]}"
+            return f"{parts[0]}_{parts[1]}"
         return name
 
     df = baseline_df.copy()

@@ -103,6 +103,7 @@ class BaseModel:
             # ⭐ 这里统一组织 format 所需的字段：
             #   - 多余字段不会影响 str.format（没用到就忽略），
             #   - 可以兼容所有 selector（Random/All/Real/Recent）。
+            # TODO: 如果有新的 selector，需要新增 format 字段，请补充这里
             filename = tpl.format(
                 current_zoo_num=self.args.current_zoo_num,
                 zoo_total_num=self.args.zoo_total_num,
@@ -358,12 +359,14 @@ class BaseModel:
             writer = csv.writer(csvfile)
             writer.writerow(row)
 
+
         if res is not None:
             print(
-                f"{self.model_name}",
+                f"Saved metrics:[",
                 f"MASE: {res['MASE[0.5]'][0]:.2f}",
                 f"sMAPE: {res['sMAPE[0.5]'][0]:.2f}",
-                f"CRPS: {res['mean_weighted_sum_quantile_loss'][0]:.2f}")
+                f"CRPS: {res['mean_weighted_sum_quantile_loss'][0]:.2f}"
+                f"] to {self.csv_file_path}")
         else:
             print(f"{self.model_name} No evaluation results.")
 
