@@ -64,6 +64,7 @@ Model_zoo_details = {
             "model_class": "SundialModel",
             "module_name": "thuml/Sundial-base_128m",
             "model_local_path": "Model_Path/sundial-models/Sundial-base_128m",
+            "release_date": "2025-05-14",
         },
     },
     "chronos": {
@@ -74,6 +75,7 @@ Model_zoo_details = {
             "model_class": "ChronosModel",
             "module_name": "amazon/chronos-bolt-tiny",
             "model_local_path": "Model_Path/chronos-models/chronos-bolt-tiny",
+            "release_date": "2024-11-10",
         },
     },
     "moirai": {
@@ -84,6 +86,7 @@ Model_zoo_details = {
             "model_class": "MoiraiModel",
             "module_name": "Salesforce/moirai-1.0-R-small",
             "model_local_path": "Model_Path/moirai-models/moirai-1.0-R-small",
+            "release_date": "2024-03-19",
         },
     },
 
@@ -95,6 +98,7 @@ Model_zoo_details = {
             "model_class": "TimesFMModel",
             "module_name": "google/timesfm-2.5-200m-pytorch",
             "model_local_path": "Model_Path/timesfm-models/timesfm-2.5-200m-pytorch",
+            "release_date": "2025-10-1",
         },
     },
 
@@ -108,6 +112,7 @@ Model_zoo_details = {
         #     "model_class": "NewModel",
         #     "module_name": "YourOrg/New_TSFM_1-v1-small",
         #     "model_local_path": "Model_Path/new-tsfm-1-models/New_TSFM_1-v1-small",
+        #     "release_date": "2025-12-1",
         # },
     },
 
@@ -121,6 +126,7 @@ Model_zoo_details = {
         #     "model_class": "NewModel",
         #     "module_name": "YourOrg/New_TSFM_2-v1-base",
         #     "model_local_path": "Model_Path/new-tsfm-2-models/New_TSFM_2-v1-base",
+        #     "release_date": "2025-12-2",
         # },
     },
 }

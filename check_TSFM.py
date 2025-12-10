@@ -52,11 +52,6 @@ def process_results(file_path, model_name, common_datasets, verbose=False):
 
     df["model"] = model_name
     df[['ds_key', 'ds_freq', 'term']] = df['dataset'].str.extract(r'^(.*?)/([^/]+)/([^/]+)$')
-    df = df.rename(columns={
-        'eval_metrics/MASE[0.5]': 'MASE',
-        'eval_metrics/mean_weighted_sum_quantile_loss': 'CRPS',
-        'eval_metrics/sMAPE[0.5]': 'sMAPE',
-    })
     if 'model_order' in df.columns:
         df['model_order'] = df['model_order'].apply(
             lambda x: x.tolist() if hasattr(x, 'tolist') else
@@ -77,15 +72,7 @@ def summarize_baselines(baseline_df: pd.DataFrame, rank_base_list=None):
     if rank_base_list is None:
         rank_base_list = ["MASE", "sMAPE", "CRPS"]
 
-    # 统一指标命名，兼容 eval_metrics 前缀
     df = baseline_df.copy()
-    df = df.rename(
-        columns={
-            "eval_metrics/MASE[0.5]": "MASE",
-            "eval_metrics/mean_weighted_sum_quantile_loss": "CRPS",
-            "eval_metrics/sMAPE[0.5]": "sMAPE",
-        }
-    )
 
     for rank_base in rank_base_list:
         if rank_base not in df.columns:
@@ -150,21 +137,6 @@ def summarize_selectors(
     """
     df = combined_df.copy()
 
-    df = df.rename(
-        columns={
-            "eval_metrics/MASE[0.5]": "MASE",
-            "eval_metrics/mean_weighted_sum_quantile_loss": "CRPS",
-            "eval_metrics/sMAPE[0.5]": "sMAPE",
-        }
-    )
-
-    # 支持传原始列名，统一映射到 MASE/CRPS/sMAPE
-    rank_base_map = {
-        "eval_metrics/MASE[0.5]": "MASE",
-        "eval_metrics/mean_weighted_sum_quantile_loss": "CRPS",
-        "eval_metrics/sMAPE[0.5]": "sMAPE",
-    }
-    rank_base = rank_base_map.get(rank_base, rank_base)
     if rank_base not in df.columns:
         raise ValueError(f"rank_base='{rank_base}' 不在 DataFrame 列中，无法计算 RANK")
 
@@ -335,14 +307,7 @@ if __name__ == "__main__":
         summarize_baselines(baseline_df_print, rank_base_list=["MASE"])
 
         # 2. 保存结果，用于打印跨参数对比表
-        df = baseline_df_print.rename(
-            columns={
-                "eval_metrics/MASE[0.5]": "MASE",
-                "eval_metrics/mean_weighted_sum_quantile_loss": "CRPS",
-                "eval_metrics/sMAPE[0.5]": "sMAPE",
-            }
-        )
-
+        df = baseline_df_print
         df["RANK"] = df.groupby("dataset")["MASE"].rank(method="min", ascending=True)
 
         avg_rank = df.groupby("model")["RANK"].mean()

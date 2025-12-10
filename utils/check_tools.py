@@ -50,12 +50,6 @@ def analyze_model_results(df,verbose,verbose_grouped=False):
     # 提取数据集信息
     df[['ds_key', 'ds_freq', 'term']] = df['dataset'].str.extract(r'^(.*?)/([^/]+)/([^/]+)$')
 
-    # 重命名指标列
-    df = df.rename(columns={
-        'eval_metrics/MASE[0.5]': 'MASE',
-        'eval_metrics/mean_weighted_sum_quantile_loss': 'CRPS',
-        'eval_metrics/sMAPE[0.5]': 'sMAPE',
-    })
 
     # 定义指标顺序
     metrics = ['sMAPE', 'MASE', 'CRPS']
@@ -105,7 +99,7 @@ def check_duplicate_results(df: pd.DataFrame, csv_file_path, verbose: bool = Fal
     检查并清理“同一个 dataset 出现多条记录”的情况。
     逻辑：
         - 先找出 dataset 重复的行
-        - 用 MASE（或 eval_metrics/MASE[0.5]）检查是否在容差范围内一致
+        - 用 MASE检查是否在容差范围内一致
         - 一致则保留第一条，删除其它重复项
         - 不一致则提醒手动检查
 
@@ -124,8 +118,8 @@ def check_duplicate_results(df: pd.DataFrame, csv_file_path, verbose: bool = Fal
     removed_datasets = []
     needs_save = False
 
-    # 优先用原始列名，其次用重命名后的 'MASE'
-    metric_candidates = ["eval_metrics/MASE[0.5]", "MASE"]
+    # 优先用原始列名
+    metric_candidates = [ "MASE"]
     metric_col = next((c for c in metric_candidates if c in df_cleaned.columns), None)
     if metric_col is None:
         if verbose:
@@ -209,11 +203,6 @@ def standardize_model_names(baseline_data, model_col: str = "model") -> pd.DataF
     # 合并 baseline 结果
     baseline_df = pd.concat(baseline_data, ignore_index=True)
     baseline_df[['ds_key', 'ds_freq', 'term']] = baseline_df['dataset'].str.extract(r'^(.*?)/([^/]+)/([^/]+)$')
-    baseline_df = baseline_df.rename(columns={
-        'eval_metrics/MASE[0.5]': 'MASE',
-        'eval_metrics/mean_weighted_sum_quantile_loss': 'CRPS',
-        'eval_metrics/sMAPE[0.5]': 'sMAPE',
-    })
     def _normalize(name: str) -> str:
         parts = name.split("_", 1)
         if len(parts) == 2:
@@ -308,9 +297,9 @@ def calculate_order_metrics(df_real, df_pred, k=None):
 
     return result
 
-def filter_models_by_key(model_zoo, select_date, select_key: str = "release"):
+def filter_models_by_key(model_zoo, select_date, select_key: str = "release_date"):
     """
-    按日期字段（默认 release）筛选出 <= select_date 的模型，
+    按日期字段（默认 release_date）筛选出 <= select_date 的模型，
     并按照日期排序、重新编号 id，返回：
 
     - filtered_zoo: {family: {size: details_with_id}}
@@ -325,7 +314,7 @@ def filter_models_by_key(model_zoo, select_date, select_key: str = "release"):
                 details_with_meta["_size"] = size
                 all_models.append(details_with_meta)
 
-    all_models_sorted = sorted(all_models, key=lambda x: x["release"])
+    all_models_sorted = sorted(all_models, key=lambda x: x["release_date"])
 
     filtered_zoo = {}
     for idx, model in enumerate(all_models_sorted):

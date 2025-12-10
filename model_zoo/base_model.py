@@ -21,10 +21,11 @@ from gluonts.ev.metrics import (
     MeanWeightedSumQuantileLoss,
 )
 
-from data import Dataset
+from utils.data import Dataset
 from utils.debug import debug_check_input_nan, debug_print_test_input, debug_forecasts
 
-from Model_Path.model_zoo_config import Model_zoo_details, MULTIVAR_TSFM_PREFIXES
+from Model_Path.model_zoo_config import MULTIVAR_TSFM_PREFIXES
+from selector.selector_config import Selector_zoo_details
 
 warnings.filterwarnings("ignore")
 load_dotenv()  # 加载环境变量
@@ -61,7 +62,7 @@ class BaseModel:
         self.batch_size = args.batch_size
 
         self.get_save_path()
-        print('Save Path: ',self.csv_file_path)
+        print('Save Path: ', self.csv_file_path)
 
         self.done_datasets = []
         if self.args.skip_saved:
@@ -81,21 +82,46 @@ class BaseModel:
 
         os.makedirs(self.output_dir, exist_ok=True)
 
-        if self.args.fix_context_len:
-            self.output_dir = os.path.join(self.output_dir, f"cl_{self.args.context_len}")
-        else:
-            self.output_dir = os.path.join(self.output_dir, f"cl_original")
+        if self.args.run_mode == "zoo":
+            if self.args.fix_context_len:
+                self.model_cl_name = f"cl_{self.args.context_len}"
+            else:
+                self.model_cl_name = "cl_original"
+            self.output_dir = os.path.join(self.output_dir, self.model_cl_name)
 
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir, exist_ok=True)
-        self.csv_file_path = os.path.join(self.output_dir, "all_results.csv")
+            if not os.path.exists(self.output_dir):
+                os.makedirs(self.output_dir, exist_ok=True)
+            self.csv_file_path = os.path.join(self.output_dir, "all_results.csv")
+
+        elif self.args.run_mode == "select":
+            cfg = Selector_zoo_details.get(self.model_name, None)
+            if cfg is None:
+                raise ValueError(f"⚠️ 未知 selector 模型 {self.model_name}，请在 selector_config.py 中补充配置")
+
+            tpl = cfg["csv_name_tpl"]
+
+            # ⭐ 这里统一组织 format 所需的字段：
+            #   - 多余字段不会影响 str.format（没用到就忽略），
+            #   - 可以兼容所有 selector（Random/All/Real/Recent）。
+            filename = tpl.format(
+                current_zoo_num=self.args.current_zoo_num,
+                zoo_total_num=self.args.zoo_total_num,
+                ensemble_size=self.args.ensemble_size,
+                seed=getattr(self.args, "seed", None),
+                real_order_metric=getattr(self.args, "real_order_metric", None),
+            )
+
+            self.csv_file_path = os.path.join(self.output_dir, filename)
+
+        else:
+            raise ValueError('⚠️ 未知运行模式，仅支持 zoo / select')
 
         header = [
             "dataset",
             "model",
-            "eval_metrics/MASE[0.5]",
-            "eval_metrics/sMAPE[0.5]",
-            "eval_metrics/mean_weighted_sum_quantile_loss",
+            "MASE",
+            "sMAPE",
+            "CRPS",
             "domain",
             "num_variates",
             "model_order"
@@ -129,15 +155,16 @@ class BaseModel:
     def _decide_univariate(self, ds_name, term):
         """根据模型类型和数据维度，决定是否转为单变量"""
         prefix = self.model_name.split("_")[0].lower()
-        if (
-            prefix in MULTIVAR_TSFM_PREFIXES
-            or self.model_name.split("_")[-1] == "Select"
-        ):
-            return False
-
-        # 先用 to_univariate=False 探测原始 target_dim 决定是否需要转为单变量
-        tmp_ds = Dataset(name=ds_name, term=term, to_univariate=False)
-        return tmp_ds.target_dim != 1
+        if (prefix in MULTIVAR_TSFM_PREFIXES or self.args.run_mode == "select"):
+            to_univariate = False
+        else:
+            # 用 to_univariate=False 探测原始 target_dim 决定是否需要转为单变量
+            to_univariate = (
+                False
+                if Dataset(name=ds_name, term=term, to_univariate=False).target_dim == 1
+                else True
+            )
+        return to_univariate
 
     def _make_forecasts(self, dataset, dataset_name, ds_config, fixed_model_order, debug_mode):
         """
@@ -146,33 +173,44 @@ class BaseModel:
         - 非选择器：内部处理 OOM 重试、debug 打印、NaN 检查和噪声注入
         """
         model_order = None
-
         batch_size = self.batch_size
-        while True:
-            try:
-                predictor = self.get_predictor(dataset, batch_size)
-                test_input = dataset.test_data.input
 
-                if debug_mode:
-                    # 打印数据格式
-                    debug_print_test_input(dataset)
-                    debug_check_input_nan(test_input)
+        if self.args.run_mode == "zoo":
+            while True:
+                try:
+                    predictor = self.get_predictor(dataset, batch_size)
+                    test_input = dataset.test_data.input
 
-                input_data = test_input
-                forecasts = list(
-                    tqdm(
-                        predictor.predict(input_data),
-                        total=len(dataset.test_data.input),
-                        desc=f"Predicting {ds_config}",
+                    if debug_mode:
+                        # 打印数据格式
+                        debug_print_test_input(dataset)
+                        debug_check_input_nan(test_input)
+
+                    input_data = test_input
+                    forecasts = list(
+                        tqdm(
+                            predictor.predict(input_data),
+                            total=len(dataset.test_data.input),
+                            desc=f"Predicting {ds_config}",
+                        )
                     )
-                )
-                break
-            except torch.cuda.OutOfMemoryError:
-                print(
-                    f"⚠️ OOM at batch_size {batch_size}, "
-                    f"reducing to {batch_size // 2}"
-                )
-                batch_size //= 2
+                    break
+                except torch.cuda.OutOfMemoryError:
+                    print(
+                        f"⚠️ OOM at batch_size {batch_size}, "
+                        f"reducing to {batch_size // 2}"
+                    )
+                    batch_size //= 2
+
+        elif self.args.run_mode == "select":
+            predictor = self.get_predictor(dataset, batch_size)
+            forecast_iter, model_order = predictor.predict(
+                dataset.test_data.input, dataset_name, fixed_model_order
+            )
+            forecasts = list(forecast_iter)
+
+        else:
+            raise ValueError('⚠️ 未知运行模式，仅支持 zoo / select')
 
         if debug_mode:
             debug_forecasts(forecasts)
@@ -187,7 +225,13 @@ class BaseModel:
         total_time = 0
         total_memory = 0
         max_memory = 0
-        fixed_model_order = None
+
+        if self.model_name == "Random_Select":
+            fixed_model_order = list(range(self.args.current_zoo_num))  # 提前固定，防止不同数据集使用的模型顺序不一致
+            random.shuffle(fixed_model_order)
+        else:
+            fixed_model_order = None
+
         print(f"🚀 Running {self.model_name}", )
 
         if len(self.done_datasets) > 0 and self.args.skip_saved:
@@ -210,7 +254,7 @@ class BaseModel:
                 else:
                     print(f"\n🚀 Dataset: [{ds_config}]",
                           f"Model: {self.model_name}",
-                          'GPU:',os.environ.get('CUDA_VISIBLE_DEVICES', 'None'),
+                          'GPU:', os.environ.get('CUDA_VISIBLE_DEVICES', 'None'),
                           'Batch_size:', self.batch_size,
                           'num_workers:', self.args.num_workers
                           )
@@ -230,7 +274,7 @@ class BaseModel:
                     forecasts=forecasts,
                     test_data=dataset.test_data,
                     metrics=metrics,
-                    batch_size=1024,
+                    batch_size=1024,  # 新版gluonts支持batch_size（pip install gluonts==0.15.1）
                     axis=None,
                     mask_invalid_label=True,
                     allow_nan_forecast=False,
@@ -244,26 +288,26 @@ class BaseModel:
                 allocated = torch.cuda.memory_allocated() / 1024 ** 2
                 memory_used = reserved + allocated
 
-                max_memory= max(max_memory, memory_used)
+                max_memory = max(max_memory, memory_used)
                 total_memory += memory_used
                 total_time += elapsed
 
                 print(f"time cost 🧭 {elapsed:.2f}s",
                       f"memory-use {memory_used:.0f} MB", end=' ')
 
-                self.save_results(res, forecasts, ds_config, dataset_name, ds_key, elapsed, memory_used,dataset, model_order)
+                if self.args.save_pred:
+                    self.save_results(res, forecasts, ds_config, dataset_name, ds_key, elapsed, memory_used, dataset, model_order)
 
         # ===================== 运行结束后：统计总体性能并检查结果文件 =====================
         num_ds = len(self.all_data_configs)
-        if num_ds-len(self.done_datasets) > 0 and self.args.save_pred:
+        if num_ds - len(self.done_datasets) > 0 and self.args.save_pred:
             # 计算平均耗时，保留整数
 
             average_time = total_time / max(num_ds, 1)
             average_memory = total_memory / max(num_ds, 1)
 
-            print(f"\n🧭 已运行{num_ds}个数据集，total_time:",f"{total_time:.2f}s","average_time:",f"{average_time:.2f}s",
-                  "max_memory:",f"{max_memory:.0f} MB","average_memory:",f"{average_memory:.0f} MB \n",)
-
+            print(f"\n🧭 已运行{num_ds}个数据集，total_time:", f"{total_time:.2f}s", "average_time:", f"{average_time:.2f}s",
+                  "max_memory:", f"{max_memory:.0f} MB", "average_memory:", f"{average_memory:.0f} MB \n", )
 
             # 保存整体时间统计到 CSV 文件
             time_save_filename = "results/runtime-TSFM.csv"
@@ -296,23 +340,23 @@ class BaseModel:
     # 结果保存逻辑
     # ==============================================================
     def save_results(self, res, forecasts, ds_config, dataset_name, ds_key, elapsed, memory_used, dataset=None, model_order=None):
-        if self.args.save_pred:
-            formatted_model_order = '[' + " ".join(map(str, model_order)) + ']' if model_order is not None else ""
 
-            row = [
-                ds_config,
-                self.model_name,
-                res["MASE[0.5]"][0],
-                res["sMAPE[0.5]"][0],
-                res["mean_weighted_sum_quantile_loss"][0],
-                dataset_properties_map[ds_key]["domain"],
-                dataset_properties_map[ds_key]["num_variates"],
-                formatted_model_order
-            ]
+        formatted_model_order = '[' + " ".join(map(str, model_order)) + ']' if model_order is not None else ""
 
-            with open(self.csv_file_path, "a", newline="") as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(row)
+        row = [
+            ds_config,
+            self.model_name,
+            res["MASE[0.5]"][0],
+            res["sMAPE[0.5]"][0],
+            res["mean_weighted_sum_quantile_loss"][0],
+            dataset_properties_map[ds_key]["domain"],
+            dataset_properties_map[ds_key]["num_variates"],
+            formatted_model_order
+        ]
+
+        with open(self.csv_file_path, "a", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(row)
 
         if res is not None:
             print(
@@ -320,9 +364,11 @@ class BaseModel:
                 f"MASE: {res['MASE[0.5]'][0]:.2f}",
                 f"sMAPE: {res['sMAPE[0.5]'][0]:.2f}",
                 f"CRPS: {res['mean_weighted_sum_quantile_loss'][0]:.2f}")
+        else:
+            print(f"{self.model_name} No evaluation results.")
 
         # 保存预测结果到npy和json
-        if self.args.save_pred and self.model_name.split("_")[-1] != "Select":
+        if self.args.run_mode == "zoo":
             # 1) 样本数组：shape = (num_series, num_samples, pred_len, num_channels)
             if hasattr(forecasts[0], "samples"):
                 arrs = [fc.samples for fc in forecasts]
@@ -336,7 +382,6 @@ class BaseModel:
             samples_path = os.path.join(self.output_dir, f"{dataset_name}_samples.npy")
 
             np.save(samples_path, samples)
-
 
             # 2) 保存元数据 + 性能指标
             meta = {
