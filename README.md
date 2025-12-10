@@ -347,9 +347,6 @@ Model_Path/
 
 ## 任务三：复现一个新的模型选择方法 (40 pts + bonus 40 pts)
 
-> 任务三中，你需要在 `selector/my_fancy_select.py`中实现一个新的模型选择方法 ，并修改 `selector/select_config.py`使其与框架代码兼容 ，在评估阶段，你需要修改`check_selector.py`来添加你新实现的模型选择方法的结果汇总部分
->
-
 > 任务三中，你需要在 `selector/my_fancy_select.py` 中实现一个新的模型选择方法，并在 `selector/select_config.py` 中完成配置，使其与现有框架兼容；在评估阶段，你需要修改 `check_selector.py`，将你的方法纳入统一的结果汇总与对比。
 
 ### 1. 背景与目标
@@ -357,15 +354,13 @@ Model_Path/
 在任务一和任务二中，你已经会：
 
 - 在统一框架下运行多个 TSFM；
+- 新增TSFM，了解其在调用过程中的细节
 - 比较不同模型在不同数据集、不同 `context_len` 下的性能。
 
-实际应用中，**不同 TSFM 的能力差异很大**，没有任何单个模型能在所有数据集上同时最优；  
-如果在每个新任务上都暴力遍历全部模型，计算开销非常大，且不现实。
+实际应用中，**不同 TSFM 的能力差异很大**，没有任何单个模型能在所有数据集上同时最优；如果在每个新任务上都暴力遍历全部模型，计算开销非常大，且不现实。
 
-因此我们需要一种 **模型选择（selector）方法**：  
-在不遍历所有模型的前提下，尽可能为每个下游任务匹配一个“接近最佳”的 TSFM。  
-在本框架中，`Real_Select` 提供了“理想上限”（oracle），即在真实性能上挑选最优模型；  
-而你需要设计一个 **可实现的 selector**，尽量逼近这个上限。
+因此我们需要一种 **模型选择（selector）方法**：在不遍历所有模型的前提下，尽可能为每个下游任务匹配一个“接近最佳”的 TSFM。  
+在本框架中，`Real_Select` 提供了“理想上限”（oracle），即在真实性能上挑选最优模型；而你需要设计一个 **可实现的 selector**，尽量逼近这个上限。
 
 
 
@@ -395,7 +390,7 @@ Model_Path/
 - 利用数据统计特征（如趋势、季节性、波动性、ACF/PACF 等）构建 task embedding，然后匹配最适合该 task embedding 的模型；
 - 基于预训练 TSFM 的中间表示，做一次“任务-模型相似度”的匹配；
 - 类似 few-shot learning / meta-learning，根据少量验证窗口的性能来快速估计各模型在该任务上的排名；
-- 借鉴图像、文本等领域已有的模型选择方法，只要你能合理迁移到时序任务即可。
+- 借鉴图像、文本等领域已有的模型选择方法，只要你能合理迁移到时序任务即可（主要关注时序数据在滑动窗口和多变量方面的特点）。
 
 > **注意（多变量时序的特殊性）：**  
 > 时序任务中往往是多通道（multivariate），你需要思考：
@@ -551,6 +546,16 @@ python run_model_zoo.py \
    如果你对自己的 selector 方法有信心，可以进一步测试其在“模型库不断扩张”的动态场景下的表现：
 
    ```
+   #在real_world_mode下运行你的selector
+   python run_model_zoo.py \
+     --run_mode "select" \
+     --models My_Fancy_Select \
+     --fix_context_len --real_world_mode
+   
+   #在real_world_mode下运行其他baseline_selector
+   ...
+   
+   #在real_world_mode下评测
    python check_selector.py --real_world_mode
    ```
 
