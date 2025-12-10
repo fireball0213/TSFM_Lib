@@ -5,10 +5,10 @@ TSFM 的核心特点是：在大规模多源时序数据上进行预训练，具
 
 本次作业的目标是：在一个统一的框架和环境下，构建一个由 TSFM 组成的 **model zoo**，让同学们：
 
-- 熟悉最新 TSFM 的 zero-shot 预测能力；
+- 熟悉最新 TSFM 的 zero-shot 预测能力；熟悉 GIFT-Eval 这一最新的时序基础模型 benchmark；
 - 了解其中关键参数（如 `context_len`、`prediction_length`、批大小等）对模型性能与稳定性的影响；
 - 学会在一个统一代码框架中整合与复现前沿模型；
-- 熟悉 GIFT-Eval 这一最新的时序基础模型 benchmark。
+- 初步掌握模型选择和推荐的思路方法。
 
 
 
@@ -27,7 +27,8 @@ TSFM 的核心特点是：在大规模多源时序数据上进行预训练，具
 
 **任务三：复现新的 selector 方法（40 pts） + （bonus 40 pts）**
 
-实现一个新的 selector 方法，对不同的下游预测任务推荐不同的模型进行预测，并与基线 selector 进行性能对比，如果在全部数据集上的avg_Rank能够超越基线，可以获得bonus分数。
+1. 实现一个新的 selector 方法，对不同的下游预测任务推荐不同的模型进行预测
+2. 与基线 selector 进行性能对比，如果在全部数据集上的avg_Rank能够超越基线，可以获得bonus分数。
 
 > ⚠️ 本作业 **推荐采用本地离线方式**：  
 > 所有数据和模型文件从 HuggingFace 或其他来源预先下载到本地，运行时 **不再从网络在线拉取**，框架直接从 `Dataset_Path/` 和 `Model_Path/` 目录加载。
@@ -482,7 +483,7 @@ python run_model_zoo.py \
 
 ### 6 调用你的 selector 方法
 
-在 `selector/my_fancy_select.py` 和 `selector/select_config.py` 完成实现后，你可以类似地调用自己的方法，例如（假设方法名为 `My_Fancy_Select`）：
+在 `selector/my_fancy_select.py` 和 `selector/select_config.py` 完成实现后，你可以类似地调用自己的方法，例如（假设方法名为 `My_Fancy_Select`，Linux环境）：
 
 ```
 python run_model_zoo.py \
@@ -536,12 +537,7 @@ python run_model_zoo.py \
    Pred1_in_RealK3             0.920             1.000          0.920         nan
    ```
 
-3. **bonus 规则**
-
-   - 若你的 selector 的 **Rank（预测性能）优于最好的 baseline TSFM**（即单模型 baseline 中的最优者），可额外获得 **+20 bonus**；
-   - 若你的 selector 同时在 Rank 上 **超过：最优 baseline TSFM、`Recent_Select` 和 `All_Select`** 三者，则可额外获得 **+40 bonus**（不叠加，取其高者）。
-
-4. **真实场景扩展（可选）**
+3. **真实场景扩展（可选）**
 
    如果你对自己的 selector 方法有信心，可以进一步测试其在“模型库不断扩张”的动态场景下的表现：
 
@@ -550,7 +546,8 @@ python run_model_zoo.py \
    python run_model_zoo.py \
      --run_mode "select" \
      --models My_Fancy_Select \
-     --fix_context_len --real_world_mode
+     --fix_context_len \
+     --real_world_mode \
    
    #在real_world_mode下运行其他baseline_selector
    ...
@@ -560,6 +557,13 @@ python run_model_zoo.py \
    ```
 
    在这个模式下，`check_selector.py` 会模拟一个随着时间不断加入新 TSFM 的环境，观察你的方法在“旧模型 + 新模型混合”的情况下，是否仍能保持稳定甚至领先的性能。
+
+4. **bonus 规则**（多规则可叠加，最多+40）
+
+   1. 若你的 selector 的 **Rank（预测性能）优于**`Recent_Select` 和 `All_Select`，可获得 **+10 bonus**；
+   2. 若你的 selector 的 **Rank（预测性能）优于最好的 baseline TSFM**（即单模型 baseline 中的最小Rank），可获得 **+10 bonus**；
+   3. 若你的 selector 同时在 Rank 上 **超过：最优 baseline TSFM、`Recent_Select` 和 `All_Select`** 三者，则可获得 **+10 bonus**；
+   4. 若你的 selector 在`real_world_mode`模式下的所有结果中，达成上面三条规则中的任意一条，则可额外获得 **+10 bonus**。
 
 ---
 
